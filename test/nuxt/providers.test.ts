@@ -9,6 +9,7 @@ import weserv from '../../dist/runtime/providers/weserv'
 import aliyun from '../../dist/runtime/providers/aliyun'
 import awsAmplify from '../../dist/runtime/providers/awsAmplify'
 import cloudflare from '../../dist/runtime/providers/cloudflare'
+import cloudflareimages from '../../dist/runtime/providers/cloudflareimages'
 import cloudinary from '../../dist/runtime/providers/cloudinary'
 import twicpics from '../../dist/runtime/providers/twicpics'
 import fastly from '../../dist/runtime/providers/fastly'
@@ -37,6 +38,8 @@ import wagtail from '../../dist/runtime/providers/wagtail'
 import uploadcare from '../../dist/runtime/providers/uploadcare'
 import sirv from '../../dist/runtime/providers/sirv'
 import hygraph from '../../dist/runtime/providers/hygraph'
+import umbraco from '../../dist/runtime/providers/umbraco'
+import flyimg from '../../dist/runtime/providers/flyimg'
 
 function getEmptyContext() {
   return {
@@ -111,6 +114,35 @@ describe('Providers', () => {
     }
   })
 
+  it('cloudflareimages', () => {
+    const providerOptions = {
+      baseURL: 'https://imagedelivery.net/',
+      accountHash: 'accountHash',
+    }
+    for (const image of images) {
+      const [src, modifiers] = image.args
+      const generated = cloudflareimages().getImage(src, { modifiers, ...providerOptions }, getEmptyContext())
+      expect(generated).toMatchObject(image.cloudflareimages)
+    }
+  })
+
+  it('cloudflareimage variant default', () => {
+    const providerOptions = {
+      accountHash: 'accountHash',
+    }
+    // Should use 'public' variant when no modifiers are provided
+    const generated = cloudflareimages().getImage('imageId123', { modifiers: {}, ...providerOptions }, getEmptyContext())
+    expect(generated).toMatchObject({ url: 'https://imagedelivery.net/accountHash/imageId123/public' })
+  })
+
+  it('cloudflareimage variant custom', () => {
+    const providerOptions = {
+      accountHash: 'accountHash',
+    }
+    // Should ignore other modifiers when variant is provided
+    const generated = cloudflareimages().getImage('imageId123', { modifiers: { variant: 'customVariant', width: 500 }, ...providerOptions }, getEmptyContext())
+    expect(generated).toMatchObject({ url: 'https://imagedelivery.net/accountHash/imageId123/customVariant' })
+  })
   it('cloudinary', () => {
     const providerOptions = {
       baseURL: '/',
@@ -734,6 +766,27 @@ describe('Providers', () => {
     }
   })
 
+  it('flyimg', () => {
+    const providerOptions = {
+      baseURL: 'https://demo.flyimg.io',
+      sourceURL: 'https://my-website.com',
+    }
+
+    for (const image of images) {
+      const [src, modifiers] = image.args
+      const generated = flyimg().getImage(src, { modifiers, ...providerOptions }, getEmptyContext())
+      expect(generated).toMatchObject(image.flyimg)
+    }
+
+    // fit: 'cover' → c_1 flag
+    expect(flyimg().getImage('/test.png', { modifiers: { width: 200, height: 200, fit: 'cover' }, ...providerOptions }, getEmptyContext()))
+      .toMatchObject({ url: 'https://demo.flyimg.io/upload/w_200,h_200,c_1/https://my-website.com/test.png' })
+
+    // fit: 'fill' → par_0 flag
+    expect(flyimg().getImage('/test.png', { modifiers: { width: 200, height: 200, fit: 'fill' }, ...providerOptions }, getEmptyContext()))
+      .toMatchObject({ url: 'https://demo.flyimg.io/upload/w_200,h_200,par_0/https://my-website.com/test.png' })
+  })
+
   it('weserv', () => {
     const providerOptions = {
       baseURL: 'https://my-website.com/',
@@ -758,6 +811,16 @@ describe('Providers', () => {
       const [src, modifiers] = image.args
       const generated = none().getImage(src, { modifiers, ...providerOptions }, getEmptyContext())
       expect(generated).toMatchObject(image.none)
+    }
+  })
+
+  it('umbraco', () => {
+    const providerOptions = {}
+
+    for (const image of images) {
+      const [src, modifiers] = image.args
+      const generated = umbraco().getImage(src, { modifiers, ...providerOptions }, getEmptyContext())
+      expect(generated).toMatchObject(image.umbraco)
     }
   })
 })
